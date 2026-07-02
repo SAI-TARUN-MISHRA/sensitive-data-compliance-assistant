@@ -35,7 +35,10 @@ for key, default in {
     if key not in st.session_state:
         st.session_state[key] = default
 
-RISK_COLORS = {"Low Risk": "🟢", "Medium Risk": "🟡", "High Risk": "🔴"}
+RISK_COLORS  = {"Low Risk": "🟢", "Medium Risk": "🟡", "High Risk": "🔴"}
+RISK_BG      = {"Low Risk": "#d4edda", "Medium Risk": "#fff3cd", "High Risk": "#f8d7da"}
+RISK_FG      = {"Low Risk": "#155724", "Medium Risk": "#856404", "High Risk": "#721c24"}
+TIER_BADGE   = {"high": "🔴 High",   "medium": "🟡 Medium",    "low": "🟢 Low"}
 
 # ---------------------------------------------------------------------------
 # Sidebar
@@ -122,13 +125,44 @@ else:
 
     # --- Overview ------------------------------------------------------------
     with tab_overview:
+        level = risk_result["level"]
+        score = risk_result["score"]
+        bg    = RISK_BG.get(level, "#e2e3e5")
+        fg    = RISK_FG.get(level, "#383d41")
+        icon  = RISK_COLORS.get(level, "")
+
+        # Big coloured risk banner
+        st.markdown(
+            f"""
+            <div style="background:{bg}; color:{fg}; border-radius:10px;
+                        padding:20px 28px; margin-bottom:18px;">
+                <h2 style="margin:0; font-size:2rem;">{icon} {level}</h2>
+                <p style="margin:4px 0 0; font-size:1rem;">
+                    Risk Score: <strong>{score}</strong> &nbsp;|&nbsp;
+                    Thresholds: 🟢&nbsp;Low&nbsp;&lt;5 &nbsp; 🟡&nbsp;Medium&nbsp;5–19 &nbsp; 🔴&nbsp;High&nbsp;≥20
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("Risk Level", f"{RISK_COLORS.get(risk_result['level'], '')} {risk_result['level']}")
+            st.metric("Risk Level", f"{icon} {level}")
         with col2:
-            st.metric("Risk Score", risk_result["score"])
+            st.metric("Risk Score", score)
         with col3:
             st.metric("Sensitive Data Categories", len(summarize_counts(findings)))
+
+        # Risk level legend
+        with st.expander("📖 How risk levels are calculated"):
+            st.markdown("""
+            | Tier | Categories | Weight | Score Threshold |
+            |------|-----------|--------|-----------------|
+            | 🔴 **High** | Aadhaar, PAN, Credit Card, Bank Account, API Key, Password, IFSC | 10 pts each | Score ≥ 20 |
+            | 🟡 **Medium** | Phone Number, Employee ID, Confidential Business Info | 4 pts each | Score 5–19 |
+            | 🟢 **Low** | Email Address | 1 pt each | Score < 5 |
+            """)
 
         counts = summarize_counts(findings)
         if counts:
@@ -143,10 +177,20 @@ else:
         if not findings:
             st.write("No findings to display.")
         else:
+            # Build a tier lookup from the breakdown
+            tier_map = {b["category"]: b["tier"] for b in risk_result["breakdown"]}
             rows = [
-                {"Category": f.category, "Masked Value": f.value, "Occurrences": f.count}
+                {
+                    "Risk Tier": TIER_BADGE.get(tier_map.get(f.category, "low"), "🟢 Low"),
+                    "Category": f.category,
+                    "Masked Value": f.value,
+                    "Occurrences": f.count,
+                }
                 for f in findings
             ]
+            # Sort so High → Medium → Low
+            tier_order = {"🔴 High": 0, "🟡 Medium": 1, "🟢 Low": 2}
+            rows.sort(key=lambda r: tier_order.get(r["Risk Tier"], 9))
             st.dataframe(rows, use_container_width=True, hide_index=True)
 
         with st.expander("Risk score breakdown"):
