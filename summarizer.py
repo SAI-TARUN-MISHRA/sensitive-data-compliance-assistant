@@ -24,18 +24,41 @@ from detector import Finding
 from risk import classify
 
 REMEDIATION_MAP = {
-    "Aadhaar Number": "Mask or tokenize Aadhaar numbers before storage; restrict access under DPDP Act guidelines.",
-    "PAN Number": "Redact PAN numbers in logs/exports; encrypt at rest if retention is required.",
-    "Credit Card Number": "Never store raw PAN/card numbers - use a PCI-DSS compliant vault or tokenization service.",
-    "Bank Account Number": "Encrypt bank account data at rest and in transit; limit field visibility by role.",
-    "IFSC Code": "Low sensitivity alone, but combined with account numbers it enables fraud - review co-location.",
-    "API Key / Secret": "Rotate the exposed key/secret immediately and move it to a secrets manager (e.g. Vault, AWS Secrets Manager).",
-    "Password": "Rotate any exposed credentials immediately; never store plaintext passwords in documents.",
-    "Email Address": "Low individual risk, but bulk email lists should be access-controlled to avoid spam/phishing exposure.",
-    "Phone Number": "Mask phone numbers in shared/exported copies; apply consent checks before external sharing.",
-    "Employee ID": "Restrict document sharing to HR/authorized personnel only.",
+    # Identity documents
+    "Aadhaar Number":           "Mask or tokenize Aadhaar numbers before storage; restrict access under DPDP Act guidelines.",
+    "PAN Number":               "Redact PAN numbers in logs/exports; encrypt at rest if retention is required.",
+    "Passport Number":          "Passport numbers are government-issued identifiers — redact immediately, store encrypted, limit access to authorized personnel only.",
+    "Voter ID":                 "Voter IDs uniquely identify citizens — redact in shared documents and restrict to compliance/KYC workflows.",
+    "Driving Licence Number":   "Driving licence numbers are government IDs — apply the same controls as Aadhaar/Passport; do not expose in logs.",
+    # Financial
+    "Credit Card Number":       "Never store raw card numbers — use a PCI-DSS compliant vault or tokenization service and rotate immediately.",
+    "Bank Account Number":      "Encrypt bank account data at rest and in transit; limit field visibility by role.",
+    "IFSC Code":                "Low sensitivity alone, but combined with account numbers it enables fraud — review co-location.",
+    "GST Number":               "GST numbers are business identifiers — restrict sharing to tax/compliance workflows; don't expose in public documents.",
+    # Credentials
+    "API Key / Secret":         "Rotate the exposed key/secret immediately and move it to a secrets manager (e.g. Vault, AWS Secrets Manager).",
+    "Password":                 "Rotate any exposed credentials immediately; never store plaintext passwords in documents.",
+    # Names & personal identifiers
+    "Full Name":                "Full names are PII under DPDP Act / GDPR — apply access controls and data minimization; do not expose in logs.",
+    "Father's / Mother's Name": "Parental names combined with other PII enable identity fraud — redact in shared/exported documents.",
+    "Spouse Name":              "Spouse names are personal PII — restrict to authorized HR/legal workflows only.",
+    # Contact & demographics
+    "Email Address":            "Bulk email lists should be access-controlled to avoid spam/phishing; apply consent checks before external sharing.",
+    "Phone Number":             "Mask phone numbers in shared/exported copies; apply consent checks before external sharing.",
+    "Date of Birth":            "DOB combined with name/ID is a strong identity signal — redact in non-essential contexts; apply DPDP Act retention limits.",
+    "Physical Address":         "Home addresses are sensitive PII — redact in shared documents; restrict to delivery/KYC workflows with consent.",
+    "Place of Birth":           "Place of birth combined with DOB/name can uniquely identify individuals — apply data minimization.",
+    "Nationality":              "Nationality data is sensitive under anti-discrimination laws — restrict to KYC/compliance workflows.",
+    "Gender":                   "Gender is personal data under DPDP Act — collect only when necessary and with explicit consent.",
+    "Blood Group":              "Health-related data requires explicit consent under DPDP Act — restrict to medical/insurance workflows.",
+    "Religion":                 "Religious affiliation is sensitive personal data — collect only when legally required and with explicit consent.",
+    "Occupation":               "Employment data combined with other PII can enable targeted fraud — restrict to authorized HR workflows.",
+    # Business
+    "Vehicle Registration Number":  "Vehicle reg numbers can identify individuals — redact in public/shared documents.",
+    "Employee ID":              "Restrict document sharing to HR/authorized personnel only.",
     "Confidential Business Information": "Apply document classification labels and DLP (data-loss-prevention) controls before external sharing.",
 }
+
 
 
 def _rule_based_summary(findings: List[Finding], risk_result: dict) -> dict:
