@@ -9,7 +9,7 @@ Flow: Upload -> Detect -> Classify -> Summarize -> Ask Questions
 import io
 import streamlit as st
 
-from document_parser import parse_document, UnsupportedFileError
+from document_parser import parse_document, UnsupportedFileError, IMAGE_EXTENSIONS, _ocr_available
 from detector import detect, summarize_counts, get_ner_status
 from risk import classify
 from summarizer import generate_summary
@@ -48,8 +48,9 @@ with st.sidebar:
     st.caption("AI-powered sensitive data detection & compliance summary")
 
     uploaded_file = st.file_uploader(
-        "Upload a document", type=["pdf", "txt", "csv"],
-        help="Supported formats: PDF, TXT, CSV"
+        "Upload a document or image",
+        type=["pdf", "txt", "csv", "jpg", "jpeg", "png", "bmp", "tiff", "tif"],
+        help="Supported: PDF (text or scanned), JPG/PNG image, TXT, CSV"
     )
 
     analyze_clicked = st.button("Analyze Document", type="primary", use_container_width=True)
@@ -60,13 +61,11 @@ with st.sidebar:
                "Without it, the app runs fully offline using rule-based logic.")
     st.divider()
     # OCR status
-    try:
-        import pytesseract
-        from pdf2image import convert_from_bytes  # noqa: F401
-        st.success("🔍 OCR enabled — scanned PDFs (e.g. passport, Aadhaar) will be analysed.")
-    except ImportError:
-        st.warning("⚠️ OCR not available. Scanned image PDFs won't be detected. "
-                   "Install `pytesseract` and `pdf2image` to enable.")
+    if _ocr_available():
+        st.success("🔍 OCR enabled — scanned PDFs & image uploads (passport, Aadhaar) detected.")
+    else:
+        st.warning("⚠️ OCR not available. Scanned PDFs & image files won’t be detected. "
+                   "Install `pytesseract`, `pdf2image`, and `tesseract-ocr`.")
     # NER status
     ner_ok, ner_msg = get_ner_status()
     if ner_ok:
