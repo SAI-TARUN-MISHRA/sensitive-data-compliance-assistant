@@ -19,6 +19,21 @@ Thresholds:
     5 <= score < 20       -> Medium Risk
     0 < score < 5         -> Low Risk
     score == 0            -> Low Risk (no sensitive data found)
+
+High-risk categories
+--------------------
+  Aadhaar Number, PAN Number, Passport Number, Voter ID,
+  Driving Licence Number, Credit Card Number, Bank Account Number,
+  API Key / Secret, Password, IFSC Code
+
+Medium-risk categories
+----------------------
+  Phone Number, Employee ID, GST Number,
+  Vehicle Registration Number, Confidential Business Information
+
+Low-risk categories
+-------------------
+  Email Address, Date of Birth, Physical Address
 """
 
 from __future__ import annotations
@@ -27,14 +42,20 @@ from typing import List
 from detector import Finding
 
 HIGH_RISK_CATEGORIES = {
-    "Aadhaar Number", "PAN Number", "Credit Card Number",
-    "Bank Account Number", "API Key / Secret", "Password", "IFSC Code",
+    # Government-issued identity documents
+    "Aadhaar Number", "PAN Number", "Passport Number",
+    "Voter ID", "Driving Licence Number",
+    # Financial
+    "Credit Card Number", "Bank Account Number", "IFSC Code",
+    # Credentials
+    "API Key / Secret", "Password",
 }
 MEDIUM_RISK_CATEGORIES = {
-    "Phone Number", "Employee ID", "Confidential Business Information",
+    "Phone Number", "Employee ID", "GST Number",
+    "Vehicle Registration Number", "Confidential Business Information",
 }
 LOW_RISK_CATEGORIES = {
-    "Email Address",
+    "Email Address", "Date of Birth", "Physical Address",
 }
 
 WEIGHTS = {"high": 10, "medium": 4, "low": 1}

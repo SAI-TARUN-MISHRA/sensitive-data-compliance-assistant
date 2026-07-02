@@ -159,9 +159,9 @@ else:
             st.markdown("""
             | Tier | Categories | Weight | Score Threshold |
             |------|-----------|--------|-----------------|
-            | 🔴 **High** | Aadhaar, PAN, Credit Card, Bank Account, API Key, Password, IFSC | 10 pts each | Score ≥ 20 |
-            | 🟡 **Medium** | Phone Number, Employee ID, Confidential Business Info | 4 pts each | Score 5–19 |
-            | 🟢 **Low** | Email Address | 1 pt each | Score < 5 |
+            | 🔴 **High** | Aadhaar, PAN, Passport Number, Voter ID, Driving Licence, Credit Card, Bank Account, API Key, Password, IFSC | 10 pts each | Score ≥ 20 |
+            | 🟡 **Medium** | Phone Number, Employee ID, GST Number, Vehicle Registration, Confidential Business Info | 4 pts each | Score 5–19 |
+            | 🟢 **Low** | Email Address, Date of Birth, Physical Address | 1 pt each | Score < 5 |
             """)
 
         counts = summarize_counts(findings)
