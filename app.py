@@ -10,7 +10,7 @@ import io
 import streamlit as st
 
 from document_parser import parse_document, UnsupportedFileError
-from detector import detect, summarize_counts
+from detector import detect, summarize_counts, get_ner_status
 from risk import classify
 from summarizer import generate_summary
 from qa_engine import answer_question
@@ -68,13 +68,11 @@ with st.sidebar:
         st.warning("⚠️ OCR not available. Scanned image PDFs won't be detected. "
                    "Install `pytesseract` and `pdf2image` to enable.")
     # NER status
-    try:
-        import spacy
-        spacy.load("en_core_web_sm")
-        st.success("🧠 NER enabled — Names, places & free-text PII will be detected.")
-    except Exception:
-        st.warning("⚠️ NER not available. Names/places in free text won't be detected. "
-                   "Install `spacy` + `en_core_web_sm` to enable.")
+    ner_ok, ner_msg = get_ner_status()
+    if ner_ok:
+        st.success(ner_msg)
+    else:
+        st.warning(ner_msg)
 
     if st.session_state.filename:
         st.success(f"Loaded: {st.session_state.filename}")

@@ -36,14 +36,31 @@ from dataclasses import dataclass, field
 from typing import List
 
 # ---------------------------------------------------------------------------
-# Optional NER via spaCy
+# Optional NER via spaCy  — lazy-loaded so a missing model never crashes import
 # ---------------------------------------------------------------------------
-try:
-    import spacy
-    _nlp = spacy.load("en_core_web_sm")
-    NER_AVAILABLE = True
-except Exception:           # ImportError or OSError (model not found)
-    NER_AVAILABLE = False
+_nlp = None
+NER_AVAILABLE = False
+
+def _load_spacy():
+    """Try to load spaCy model once; cache result. Never raises."""
+    global _nlp, NER_AVAILABLE
+    if _nlp is not None:
+        return NER_AVAILABLE
+    try:
+        import spacy
+        _nlp = spacy.load("en_core_web_sm")
+        NER_AVAILABLE = True
+    except Exception:
+        NER_AVAILABLE = False
+    return NER_AVAILABLE
+
+
+def get_ner_status() -> tuple[bool, str]:
+    """Return (available, message) for display in the UI."""
+    ok = _load_spacy()
+    if ok:
+        return True, "🧠 NER active — names & places detected"
+    return False, "⚠️ NER unavailable (spaCy not installed — names/places in free text may be missed)"
 
 
 @dataclass
@@ -355,7 +372,7 @@ def detect(text: str) -> List[Finding]:
                 )
 
     # ── Layer 3: spaCy NER (optional) ─────────────────────────────────────
-    if NER_AVAILABLE:
+    if _load_spacy():
         try:
             doc = _nlp(text[:50_000])   # cap for performance
             for ent in doc.ents:
