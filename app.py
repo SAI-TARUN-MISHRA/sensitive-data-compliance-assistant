@@ -10,7 +10,7 @@ import io
 import streamlit as st
 
 from document_parser import parse_document, UnsupportedFileError, IMAGE_EXTENSIONS, _ocr_available
-from detector import detect, summarize_counts, get_ner_status
+from detector import detect, summarize_counts, get_ner_status, get_llm_status
 from risk import classify
 from summarizer import generate_summary
 from qa_engine import answer_question
@@ -72,6 +72,12 @@ with st.sidebar:
         st.success(ner_msg)
     else:
         st.warning(ner_msg)
+    # LLM status
+    llm_ok, llm_msg = get_llm_status()
+    if llm_ok:
+        st.success(llm_msg)
+    else:
+        st.info(llm_msg)
 
     if st.session_state.filename:
         st.success(f"Loaded: {st.session_state.filename}")

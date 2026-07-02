@@ -63,6 +63,15 @@ def get_ner_status() -> tuple[bool, str]:
     return False, "⚠️ NER unavailable (spaCy not installed — names/places in free text may be missed)"
 
 
+def get_llm_status() -> tuple[bool, str]:
+    """Return (available, message) for display in the UI."""
+    from llm_utils import get_llm_client
+    client, _, provider = get_llm_client()
+    if client is not None:
+        return True, f"🤖 LLM Deep Extraction Active — using {provider.upper()} for semantic scans"
+    return False, "💡 LLM Deep Extraction Offline — set GROQ_API_KEY / OPENAI_API_KEY to enable semantic PII scans"
+
+
 @dataclass
 class Finding:
     category: str           # e.g. "Full Name"
@@ -413,7 +422,73 @@ def detect(text: str) -> List[Finding]:
             count=hits,
         )
 
+    # ── Layer 4: Deep LLM Extraction (optional, only runs if API key configured) ───
+    llm_findings = _detect_via_llm(text)
+    for lf in llm_findings:
+        key = (lf.category, lf.value)
+        if key not in findings_map:
+            findings_map[key] = lf
+
     return list(findings_map.values())
+
+
+def _detect_via_llm(text: str) -> List[Finding]:
+    """
+    Use LLM (Groq / OpenAI) to extract deep semantic PII/sensitive info
+    that structural or labeled-field rules might have missed.
+    """
+    from llm_utils import get_llm_client
+    client, model, _ = get_llm_client()
+    if client is None:
+        return []
+
+    try:
+        import json
+        prompt = (
+            "You are an advanced security compliance parser. Analyze the document text below "
+            "and extract any sensitive, personal, or confidential information (PII/Credentials/Secrets/etc.).\n"
+            "Return a strictly valid JSON array of objects, where each object has exactly two keys:\n"
+            "  - 'category': The type of sensitive data found. Use standard categories where possible "
+            "(e.g., 'Full Name', 'Physical Address', 'Passport Number', 'Voter ID', 'Driving Licence Number', "
+            "'Aadhaar Number', 'PAN Number', 'Bank Account Number', 'IFSC Code', 'Date of Birth', 'Email Address', "
+            "'Phone Number', 'Credit Card Number', 'API Key / Secret', 'Password', 'Confidential Business Information', "
+            "or invent a new descriptive category if it is non-standard but sensitive like 'Confidential Project Name', "
+            "'Medical Condition', 'Salary Details').\n"
+            "  - 'value': The exact raw value of the sensitive text found.\n\n"
+            "Do not include any explanation or markdown formatting, just the raw JSON array.\n\n"
+            f"Document Text:\n{text[:4000]}"
+        )
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.0,
+        )
+        content = response.choices[0].message.content.strip()
+        # Clean markdown code blocks if any
+        if content.startswith("```"):
+            content = re.sub(r"^```(?:json)?\n", "", content)
+            content = re.sub(r"\n```$", "", content)
+        
+        data = json.loads(content)
+        # Handle cases where LLM returns {"findings": [...]} instead of direct array
+        if isinstance(data, dict):
+            for k in ["findings", "sensitive_data", "items", "data"]:
+                if k in data and isinstance(data[k], list):
+                    data = data[k]
+                    break
+        
+        findings = []
+        if isinstance(data, list):
+            for item in data:
+                cat = item.get("category", "").strip()
+                val = item.get("value", "").strip()
+                if cat and val and len(val) >= 2:
+                    # Mask the value appropriately using existing _mask logic
+                    masked_val = _mask(cat, val)
+                    findings.append(Finding(category=cat, value=masked_val, raw_value=val))
+        return findings
+    except Exception:
+        return []
 
 
 def summarize_counts(findings: List[Finding]) -> dict:
