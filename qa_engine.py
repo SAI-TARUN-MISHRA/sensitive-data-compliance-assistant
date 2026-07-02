@@ -24,7 +24,7 @@ from typing import List
 
 from detector import Finding, summarize_counts
 from risk import classify
-from summarizer import generate_summary
+from summarizer import generate_summary, _get_llm_client
 
 
 def _chunk_text(text: str, chunk_size: int = 400) -> List[str]:
@@ -44,21 +44,20 @@ def _keyword_retrieve(question: str, chunks: List[str], top_k: int = 3) -> List[
 
 
 def _llm_answer(question: str, context: str) -> str | None:
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
+    """Use Groq or OpenAI to answer a question given retrieved context."""
+    client, model, _ = _get_llm_client()
+    if client is None:
         return None
     try:
-        from openai import OpenAI
-        client = OpenAI(api_key=api_key)
         prompt = (
             "Answer the user's question using ONLY the context below. "
             "If the context does not contain the answer, say so plainly. "
             "Do not reproduce full sensitive values (e.g. full card/Aadhaar numbers) "
-            "even if present in context - refer to them by category instead.\n\n"
+            "even if present in context — refer to them by category instead.\n\n"
             f"Context:\n{context[:3000]}\n\nQuestion: {question}"
         )
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=model,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=300,
             temperature=0.2,

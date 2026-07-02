@@ -89,19 +89,42 @@ def _rule_based_summary(findings: List[Finding], risk_result: dict) -> dict:
     }
 
 
+def _get_llm_client():
+    """
+    Returns (client, model, provider) using whichever API key is configured.
+    Priority: GROQ_API_KEY → OPENAI_API_KEY → None
+    """
+    groq_key = os.environ.get("GROQ_API_KEY")
+    if groq_key:
+        try:
+            from groq import Groq
+            return Groq(api_key=groq_key), "llama-3.1-8b-instant", "groq"
+        except Exception:
+            pass
+
+    openai_key = os.environ.get("OPENAI_API_KEY")
+    if openai_key:
+        try:
+            from openai import OpenAI
+            return OpenAI(api_key=openai_key), "gpt-4o-mini", "openai"
+        except Exception:
+            pass
+
+    return None, None, None
+
+
 def _llm_enhance(rule_based: dict, raw_text_excerpt: str) -> Optional[str]:
-    """Optional: use an LLM to turn the structured rule-based summary into a
-    more natural narrative. Requires OPENAI_API_KEY in the environment.
-    Returns None (silently) if no key is configured or the call fails, so
-    the app always degrades gracefully to the rule-based summary."""
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
+    """
+    Use an LLM (Groq or OpenAI) to turn the structured findings into a
+    natural compliance narrative.
+    Requires GROQ_API_KEY or OPENAI_API_KEY in the environment.
+    Returns None silently if no key is set or the call fails.
+    """
+    client, model, provider = _get_llm_client()
+    if client is None:
         return None
 
     try:
-        from openai import OpenAI
-        client = OpenAI(api_key=api_key)
-
         prompt = (
             "You are a data-compliance assistant. Using ONLY the structured "
             "findings below (do not invent new findings), write a concise "
@@ -111,9 +134,8 @@ def _llm_enhance(rule_based: dict, raw_text_excerpt: str) -> Optional[str]:
             f"Document excerpt (context only, do not quote sensitive values):\n"
             f"{raw_text_excerpt[:1500]}"
         )
-
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=model,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=500,
             temperature=0.3,
@@ -124,9 +146,8 @@ def _llm_enhance(rule_based: dict, raw_text_excerpt: str) -> Optional[str]:
 
 
 def generate_summary(findings: List[Finding], raw_text: str = "") -> dict:
-    risk_result = classify(findings)
-    rule_based = _rule_based_summary(findings, risk_result)
-
+    risk_result  = classify(findings)
+    rule_based   = _rule_based_summary(findings, risk_result)
     llm_narrative = _llm_enhance(rule_based, raw_text)
-    rule_based["llm_narrative"] = llm_narrative  # None if no API key configured
+    rule_based["llm_narrative"] = llm_narrative
     return rule_based
