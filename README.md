@@ -113,28 +113,28 @@ A sample document with fake/synthetic PII is at `sample_data/sample.txt` — upl
                 └─────────────────────┘
 ```
 
-**File-by-file:**
-
 | File | Responsibility |
 |------|---------------|
 | `document_parser.py` | Text extraction from PDF (pdfplumber + OCR fallback for scanned pages), direct image OCR (JPG/PNG), TXT (encoding fallbacks), CSV (pandas). All OCR imports are lazy-loaded — app never crashes if libraries are missing. |
-| `detector.py` | 3-layer PII detection: (1) structural regex for fixed-format IDs, (2) labeled-field regex for form fields like "Name:", "Address:", (3) optional spaCy NER for free-text person names and locations. All matched values are masked before display. |
+| `detector.py` | 4-layer PII detection: (1) structural regex for fixed-format IDs, (2) labeled-field regex for form fields like "Name:", "Address:", (3) optional spaCy NER for free-text names, and (4) **Deep LLM Extraction** (via Groq/OpenAI) for unstructured semantic PII (e.g. project names, proprietary technologies, custom health details). |
 | `risk.py` | Weighted scoring: HIGH (10pts) → identity docs + credentials; MEDIUM (4pts) → contact + business info; LOW (1pts) → email, DOB, address. Per-category caps prevent one repeated low-risk field from drowning high-risk ones. |
-| `summarizer.py` | Compliance observations, security risks, and remediation steps from category-keyed templates. Optional LLM (OpenAI) narrates verified findings into prose — never invents findings. |
+| `summarizer.py` | Compliance observations, security risks, and remediation steps from category-keyed templates. Optional LLM (Groq/OpenAI) narrates verified findings into prose — never invents findings. |
 | `qa_engine.py` | Answers assignment questions directly from structured findings (grounded, zero hallucination). Falls back to keyword retrieval + optional LLM for open-ended questions — a minimal RAG pattern. |
-| `app.py` | Streamlit UI wiring Upload → Analyze → 4-tab results. Color-coded risk banners, tier labels in findings table, OCR/NER status indicators. |
+| `app.py` | Streamlit UI wiring Upload → Analyze → 4-tab results. Color-coded risk banners, tier labels in findings table, OCR/NER/LLM status indicators. |
 
 ---
 
 ## 3. AI/ML Approach Used
 
-### Detection — 3-Layer Hybrid Engine
+### Detection — 4-Layer Hybrid Engine
 
 **Layer 1 — Structural Regex:** Fixed-format entities (Aadhaar, PAN, Passport, credit card numbers etc.) are detected with regex + validation (Luhn checksum for cards). Context-window heuristics disambiguate overlapping formats (e.g. 12-digit bank account vs. Aadhaar).
 
 **Layer 2 — Labeled-Field Regex:** Documents and forms have labelled fields like `Name: John Doe`, `Address: ...`, `Father's Name: ...`. This layer anchors on the label to capture values that have no fixed structural format — solving the "name detection" problem without NER.
 
 **Layer 3 — spaCy NER (optional):** When spaCy + `en_core_web_sm` is available, Named Entity Recognition catches `PERSON` (full names) and `GPE/LOC` (place names) in free-running text without labels. Lazy-loaded so a missing model never crashes the app.
+
+**Layer 4 — Deep LLM Extraction:** When an API key (Groq/OpenAI) is set, a zero-shot semantic extraction pass is run. The model parses the text to identify custom confidential terms, project names (e.g. "Project Apollo"), proprietary keywords, and complex PII that rules can't detect. Findings are merged with Layers 1–3 and masked.
 
 ### Risk Classification — Weighted Scoring
 
