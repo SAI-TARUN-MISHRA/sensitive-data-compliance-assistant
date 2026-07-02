@@ -1,0 +1,22 @@
+CONFIDENTIAL - Employee Onboarding Record
+
+Employee Name: Ravi Kumar
+Employee ID: EMP-10432
+Email: ravi.kumar@examplecorp.com
+Phone: +91 9876543210
+PAN Number: ABCDE1234F
+Aadhaar Number: 2345 6789 1023
+
+Bank Details:
+Account Number: 123456789012
+IFSC Code: HDFC0001234
+
+Payroll System Access:
+api_key: sk-test1234567890ABCDEFGHIJ
+password: SuperSecret123!
+
+Note: This document is strictly confidential and intended only for internal
+use by the HR department. Do not distribute outside the organization.
+
+Emergency Contact: priya.sharma@examplecorp.com, 9123456780
+Sample Credit Card on File (test): 4111 1111 1111 1111
