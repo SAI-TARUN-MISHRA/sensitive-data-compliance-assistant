@@ -49,13 +49,18 @@ HIGH_RISK_CATEGORIES = {
     "Credit Card Number", "Bank Account Number", "IFSC Code",
     # Credentials
     "API Key / Secret", "Password",
+    # Direct personal identifiers
+    "Full Name", "Father's / Mother's Name", "Spouse Name",
 }
 MEDIUM_RISK_CATEGORIES = {
     "Phone Number", "Employee ID", "GST Number",
     "Vehicle Registration Number", "Confidential Business Information",
+    "Place of Birth", "Nationality", "Occupation",
 }
 LOW_RISK_CATEGORIES = {
     "Email Address", "Date of Birth", "Physical Address",
+    "Gender", "Marital Status", "Blood Group",
+    "Religion", "Place / Location",
 }
 
 WEIGHTS = {"high": 10, "medium": 4, "low": 1}

@@ -67,6 +67,14 @@ with st.sidebar:
     except ImportError:
         st.warning("⚠️ OCR not available. Scanned image PDFs won't be detected. "
                    "Install `pytesseract` and `pdf2image` to enable.")
+    # NER status
+    try:
+        import spacy
+        spacy.load("en_core_web_sm")
+        st.success("🧠 NER enabled — Names, places & free-text PII will be detected.")
+    except Exception:
+        st.warning("⚠️ NER not available. Names/places in free text won't be detected. "
+                   "Install `spacy` + `en_core_web_sm` to enable.")
 
     if st.session_state.filename:
         st.success(f"Loaded: {st.session_state.filename}")
