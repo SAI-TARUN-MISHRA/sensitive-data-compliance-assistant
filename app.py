@@ -58,6 +58,15 @@ with st.sidebar:
     st.caption("Optional: set OPENAI_API_KEY as an environment variable to "
                "enable LLM-enhanced summaries and natural-language Q&A. "
                "Without it, the app runs fully offline using rule-based logic.")
+    st.divider()
+    # OCR status
+    try:
+        import pytesseract
+        from pdf2image import convert_from_bytes  # noqa: F401
+        st.success("🔍 OCR enabled — scanned PDFs (e.g. passport, Aadhaar) will be analysed.")
+    except ImportError:
+        st.warning("⚠️ OCR not available. Scanned image PDFs won't be detected. "
+                   "Install `pytesseract` and `pdf2image` to enable.")
 
     if st.session_state.filename:
         st.success(f"Loaded: {st.session_state.filename}")
@@ -98,6 +107,8 @@ if analyze_clicked:
             st.session_state.summary = summary
             st.session_state.filename = uploaded_file.name
             st.session_state.chat_history = []
+            # Flag if OCR was used (page marker present in extracted text)
+            st.session_state.ocr_used = "[OCR]" in text
             st.rerun()
 
 # ---------------------------------------------------------------------------
@@ -118,6 +129,14 @@ else:
     findings = st.session_state.findings
     risk_result = st.session_state.risk_result
     summary = st.session_state.summary
+
+    # OCR notice banner
+    if st.session_state.get("ocr_used"):
+        st.info(
+            "🔍 **OCR was used on this document.** It appears to be a scanned image "
+            "(e.g. a passport or ID photo converted to PDF). Text was extracted via "
+            "Optical Character Recognition — detection accuracy depends on image quality."
+        )
 
     tab_overview, tab_findings, tab_summary, tab_qa = st.tabs(
         ["📊 Overview", "🔍 Findings", "📋 Compliance Summary", "💬 Ask Questions"]
